@@ -1,0 +1,7 @@
+{
+  "name": "Bharat-OCR Scanner",
+  "description": "A professional-grade OCR utility designed to detect and normalize Indian mobile numbers from image batches, featuring image preprocessing and CSV export.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
