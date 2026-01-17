@@ -1,7 +1,8 @@
 
 /**
- * Omni Extractor Core Logic
- * Handles OCR batch processing, image optimization, and CSV export.
+ * OMNI EXTRACTOR CORE - Stealth Logic
+ * Handles OCR, Preprocessing, and Strict CSV Formatting (+91 Prefix)
+ * Column A: Sequential Index (Name), Column B: Formatted Phone Number (+91)
  */
 
 // Global State
@@ -18,62 +19,60 @@ const el = {
     btn: document.getElementById('dlBtn') as HTMLButtonElement,
     badge: document.getElementById('countBadge') as HTMLSpanElement,
     logs: document.getElementById('consoleLog') as HTMLDivElement,
-    reset: document.getElementById('resetBtn') as HTMLButtonElement,
-    canvas: document.getElementById('procCanvas') as HTMLCanvasElement
+    canvas: document.getElementById('procCanvas') as HTMLCanvasElement,
+    reset: document.getElementById('resetBtn') as HTMLButtonElement
 };
 
 /**
- * Handle File Selection
+ * Main Event: File Batch Processing
  */
 el.input.addEventListener('change', async (e: Event) => {
     const target = e.target as HTMLInputElement;
-    const files = Array.from(target.files || []).slice(0, 20);
+    const files = Array.from(target.files || []).slice(0, 50);
     if (!files.length) return;
 
-    // Reset UI for new batch
+    // Reset Engine UI
     el.status.classList.remove('hidden');
     extractedSet.clear();
     el.badge.innerText = '0';
-    el.btn.disabled = true;
-    el.btn.className = "w-full py-5 bg-slate-800 text-slate-500 rounded-xl text-xs font-bold border border-slate-700 tracking-widest transition-all uppercase cursor-not-allowed";
-    
-    writeLog(`Batch extraction initialized for ${files.length} images.`);
+    disableBtn();
+    writeLog(`SEQUENCE STARTED: Analyzing batch of ${files.length} source objects.`);
 
     for (let i = 0; i < files.length; i++) {
-        const progressVal = (i / files.length) * 100;
+        const progressVal = Math.round((i / files.length) * 100);
         updateProgress(progressVal);
-        el.txt.innerText = `PROCESSING: FILE ${i + 1}`;
+        el.txt.innerText = `READING_OBJECT_${i + 1}`;
         
         try {
-            const processedImg = await preprocessImage(files[i]);
-            // @ts-ignore - Tesseract provided via global CDN
-            const { data } = await Tesseract.recognize(processedImg, 'eng');
+            const imgData = await preprocessImage(files[i]);
+            // @ts-ignore - Tesseract is loaded via CDN in index.html
+            const { data } = await Tesseract.recognize(imgData, 'eng');
             const foundCount = parseNumbers(data.text);
             
             if (foundCount > 0) {
-                writeLog(`File ${i + 1}: Extracted ${foundCount} new valid signatures.`);
+                writeLog(`OBJECT ${i + 1}: Captured ${foundCount} new valid signatures.`);
             } else {
-                writeLog(`File ${i + 1}: No valid signatures detected.`);
+                writeLog(`OBJECT ${i + 1}: No valid patterns found in source.`);
             }
-        } catch (error) {
-            writeLog(`Kernel error on file ${i + 1}: Engine failure.`);
-            console.error(error);
+        } catch (err) {
+            writeLog(`CRITICAL ERROR: Failed to scan object ${i + 1}. Neural bypass failed.`);
+            console.error(err);
         }
     }
 
     updateProgress(100);
-    el.txt.innerText = "SCAN COMPLETE";
-    writeLog("Processing cycle complete. Finalizing data...");
+    el.txt.innerText = "SEQUENCE COMPLETE";
+    writeLog(`Processing finished. Unique entities buffered: ${extractedSet.size}`);
 
     if (extractedSet.size > 0) {
-        enableDownloadButton();
+        enableBtn();
     } else {
-        writeLog("Critical failure: Zero valid results in current batch.");
+        writeLog("TERMINATED: Data buffer empty. No valid numbers detected.");
     }
 });
 
 /**
- * Image Preprocessing: Grayscale and Contrast optimization for OCR accuracy
+ * Image Pre-Processing Engine
  */
 function preprocessImage(file: File): Promise<string> {
     return new Promise((resolve) => {
@@ -84,85 +83,100 @@ function preprocessImage(file: File): Promise<string> {
             
             el.canvas.width = img.width;
             el.canvas.height = img.height;
-            // High contrast for sharp text detection
-            ctx.filter = "grayscale(100%) contrast(150%)";
+            // Grayscale + Contrast optimization for stealthy OCR
+            ctx.filter = "grayscale(100%) contrast(140%) brightness(110%)";
             ctx.drawImage(img, 0, 0);
-            resolve(el.canvas.toDataURL('image/jpeg', 0.95));
+            resolve(el.canvas.toDataURL('image/jpeg', 0.9));
         };
         img.src = URL.createObjectURL(file);
     });
 }
 
 /**
- * Logic: Parse Indian Mobile Numbers
+ * Regex Parsing & Normalization
+ * Captures 10-digit Indian mobiles and forces +91 prefix.
+ * Regex (?:\+?91|0|\+)? matches optional prefixes +91, 91, 0, or +.
+ * Capturing group ([6-9]\d{9}) isolates the strictly 10-digit mobile number.
  */
 function parseNumbers(text: string): number {
-    const initialSize = extractedSet.size;
-    // Captures 10-digit numbers starting with 6-9, with optional +91, 91 or 0 prefix
-    const regex = /(?:\+?91|0)?\s?([6-9]\d{9})/g;
+    const prevSize = extractedSet.size;
+    // Captures exactly 10 digits starting with 6-9, ignoring leading +91, 91, 0 or +
+    const regex = /(?:\+?91|0|\+)?\s?([6-9]\d{9})/g;
     let match;
     
     while ((match = regex.exec(text)) !== null) {
-        // Normalize all to 91XXXXXXXXXX format
-        extractedSet.add('91' + match[1]);
+        // Strict normalization: Remove prefix by capturing group 1 and adding +91
+        // This effectively satisfies stripping +, 0, 91 as they are outside the capture group
+        extractedSet.add("+91" + match[1]);
     }
     
     el.badge.innerText = extractedSet.size.toString();
-    return extractedSet.size - initialSize;
+    return extractedSet.size - prevSize;
 }
 
 /**
- * CSV Generation: Google Contacts Compatible
+ * CSV Generation: Strict sequential index formatting
+ * Column A: Header "Name", Value: Index only (1, 2, 3...)
+ * Column B: Header "mobile number", Value: Formatted Number (+91...)
  */
 function downloadCSV() {
     if (extractedSet.size === 0) return;
 
-    let csv = "Name,Phone 1 - Value\n";
-    let i = 1;
-    extractedSet.forEach(num => {
-        csv += `Extracted_${i},${num}\n`;
-        i++;
+    // Headers updated for strict requirement: Name and mobile number
+    let csvContent = "Name,mobile number\n"; 
+    let index = 1;
+    
+    extractedSet.forEach(phoneNumber => {
+        // Col A: index, Col B: normalized phone number
+        csvContent += `${index},${phoneNumber}\n`;
+        index++;
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `OmniBatch_${dlIndex}.csv`;
-    a.click();
+    const link = document.createElement('a');
     
+    link.href = url;
+    link.download = `Batch_Export_${dlIndex}.csv`;
+    link.click();
+    
+    writeLog(`DOWNLOADED: Batch_Export_${dlIndex}.csv saved to local disk.`);
     dlIndex++;
     localStorage.setItem('dlIndex', dlIndex.toString());
-    writeLog(`Export successful: OmniBatch_${dlIndex - 1}.csv generated.`);
     URL.revokeObjectURL(url);
 }
 
 /**
- * UI Utilities
+ * UI Support Functions
  */
 function updateProgress(val: number) {
     el.bar.style.width = `${val}%`;
-    el.pct.innerText = `${Math.round(val)}%`;
+    el.pct.innerText = `${val}%`;
 }
 
 function writeLog(msg: string) {
     const p = document.createElement('p');
-    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    p.innerHTML = `<span class="text-slate-600">[${time}]</span> :: ${msg}`;
+    p.innerText = `:: ${msg}`;
     el.logs.appendChild(p);
     el.logs.scrollTop = el.logs.scrollHeight;
 }
 
-function enableDownloadButton() {
+function enableBtn() {
     el.btn.disabled = false;
-    el.btn.innerText = "DOWNLOAD CSV DATA";
-    el.btn.className = "w-full py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] uppercase border-none active:scale-[0.98]";
+    el.btn.innerText = "DOWNLOAD CONTACTS (CSV)";
+    el.btn.className = "w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-black cursor-pointer transition-all shadow-lg shadow-blue-900/50 tracking-[4px] border-none active:scale-[0.98]";
 }
 
-// Global Event Listeners
+function disableBtn() {
+    el.btn.disabled = true;
+    el.btn.innerText = "BUFFERING DATA...";
+    el.btn.className = "w-full py-4 bg-slate-800 text-slate-500 rounded-2xl text-xs font-black border border-slate-700 tracking-widest cursor-not-allowed";
+}
+
+// Global Event Handlers
 el.btn.addEventListener('click', downloadCSV);
 el.reset.addEventListener('click', () => {
-    if (confirm("Confirm: Clear local engine cache and reset session?")) {
+    if (confirm("Confirm system memory wipe? Current buffered detections will be lost.")) {
         localStorage.clear();
         window.location.reload();
     }

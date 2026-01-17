@@ -1,3 +1,3 @@
 
-// This file is no longer used. See index.tsx for the core logic.
-export default function App() { return null; }
+// App is now handled purely via index.html and index.tsx
+export {};
