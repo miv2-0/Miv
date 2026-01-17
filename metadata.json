@@ -1,6 +1,6 @@
 {
-  "name": "Bharat-OCR Scanner",
-  "description": "A professional-grade OCR utility designed to detect and normalize Indian mobile numbers from image batches, featuring image preprocessing and CSV export.",
+  "name": "OmniExtract Pro",
+  "description": "Secure, batch-oriented Indian mobile number extractor for Google Contacts.",
   "requestFramePermissions": [
     "camera"
   ]
