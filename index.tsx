@@ -116,14 +116,14 @@ function parseNumbers(text: string): number {
 
 /**
  * CSV Generation: Strict sequential index formatting
- * Column A: Header "Name", Value: Index only (1, 2, 3...)
+ * Column A: Header "Number", Value: Index only (1, 2, 3...)
  * Column B: Header "mobile number", Value: Formatted Number (+91...)
  */
 function downloadCSV() {
     if (extractedSet.size === 0) return;
 
     // Headers updated for strict requirement: Name and mobile number
-    let csvContent = "Name,mobile number\n"; 
+    let csvContent = "Number,mobile number\n"; 
     let index = 1;
     
     extractedSet.forEach(phoneNumber => {
